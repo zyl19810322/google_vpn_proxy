@@ -7,7 +7,7 @@
 #### 一键脚本如下，快捷运行方式 ```bash gv.sh```
 
 ```
-pkg upgrade -y && bash <(curl -Ls https://gh-proxy.com/https://raw.githubusercontent.com/yonggekkk/google_vpn_proxy/main/gv.sh)
+pkg upgrade -y && bash <(curl -Ls https://gh-proxy.com/https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/gv.sh)
 ```
 
 #### 可在Termux输入命令 ```ifconfig``` 查看内网IP地址，并填写在支持Socks5或者Http的客户端上
@@ -39,7 +39,7 @@ Google pixel手机及VPN使用心得[视频教程系列](https://www.youtube.com
 --------------------------------------------------------
 
 ### 感谢你右上角的star🌟
-[![Stargazers over time](https://starchart.cc/yonggekkk/google_vpn_proxy.svg)](https://starchart.cc/yonggekkk/google_vpn_proxy)
+[![Stargazers over time](https://starchart.cc/zyl19810322/google_vpn_proxy.svg)](https://starchart.cc/zyl19810322/google_vpn_proxy)
 
 ---------------------------------------
 #### 声明：所有代码来源于Github社区与ChatGPT的整合，[gost](https://github.com/go-gost/gost/releases)、[Termux](https://github.com/termux/termux-app/releases)
