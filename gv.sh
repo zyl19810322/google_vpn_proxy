@@ -127,7 +127,7 @@ echo "------------------------------------------------"
 if [[ -e config.yaml ]]; then
 echo "当前使用的Socks5端口：$(cat config.yaml 2>/dev/null | grep 'service-socks5' -A 2 | grep 'addr' | awk -F':' '{print $3}' | tr -d '\"')" 
 echo "当前使用的Http端口：$(cat config.yaml 2>/dev/null | grep 'service-http' -A 2 | grep 'addr' | awk -F':' '{print $3}' | tr -d '\"')"
-proxy_user_now=$(cat config.yaml | grep -A4 "service-socks5" | grep username | awk '{print $2}')
+proxy_user_now=$(grep 'username:' config.yaml | head -1 | awk '{print $2}')
 if [ -n "$proxy_user_now" ];then
 echo "代理认证：已开启，用户名：$proxy_user_now"
 else
