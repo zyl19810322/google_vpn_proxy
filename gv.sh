@@ -51,6 +51,10 @@ fi
 echo '      metadata:' >> config.yaml
 echo '        udp: true' >> config.yaml
 echo '        udpbuffersize: 4096' >> config.yaml
+# 如果填写了账号密码则写入auth配置
+if [ -n "$proxy_user" ] && [ -n "$proxy_pass" ];then
+echo '        notls: true' >> config.yaml
+fi
 echo '    listener:' >> config.yaml
 echo '      type: tcp' >> config.yaml
 
@@ -67,6 +71,10 @@ fi
 echo '      metadata:' >> config.yaml
 echo '        udp: true' >> config.yaml
 echo '        udpbuffersize: 4096' >> config.yaml
+# 如果填写了账号密码则写入auth配置
+if [ -n "$proxy_user" ] && [ -n "$proxy_pass" ];then
+echo "        probeResist: \"off\"" >> config.yaml
+fi
 echo '    listener:' >> config.yaml
 echo '      type: tcp' >> config.yaml
 
