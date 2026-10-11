@@ -1,6 +1,8 @@
 #!/bin/bash
 xrinstall(){
 pkg install -y screen
+# 安装剪贴板依赖
+pkg install -y termux-api
 if [ ! -e xray ]; then
 echo "下载 Xray-core arm64 中……"
 # 从你的github仓库下载
@@ -83,20 +85,14 @@ cat > config.json <<EOF
 ]
 }
 EOF
-# ========= 直接硬编码参数写入gv.sh，不再读取外部文件 =========
+# ========= gv.sh：仅硬编码保存参数，只存变量，不做菜单 =========
 cat > gv.sh <<GVSCRIPT
 #!/data/data/com.termux/files/usr/bin/bash
-echo "==== 当前VLESS-Reality配置 ===="
 port="$vless_port"
 uuid="$vless_uuid"
 pbk="$publicKey"
 sid="$shortId"
-echo "端口: \$port"
-echo "UUID: \$uuid"
-echo "Reality PBK公钥: \$pbk"
-echo "shortId: \$sid"
-echo
-echo "节点链接：vless://\$uuid@你的手机内网IP:\$port?encryption=none&security=reality&type=tcp&pbk=\$pbk&sid=\$sid&sni=www.apple.com&fp=chrome&flow=xtls-rprx-vision#LAN-Reality"
+link="vless://\$uuid@你的手机内网IP:\$port?encryption=none&security=reality&type=tcp&pbk=\$pbk&sid=\$sid&sni=www.apple.com&fp=chrome&flow=xtls-rprx-vision#LAN-Reality"
 GVSCRIPT
 chmod +x gv.sh
 # 自启脚本，放到profile.d
@@ -107,18 +103,22 @@ echo '[ -n "$PID" ] && echo "$PID" | xargs kill' >> xr.sh
 echo "screen -dmS xrscreen bash -c './xray run -c config.json'" >> xr.sh
 chmod +x xr.sh
 echo "===== 安装完成 ====="
-echo "内网Reality节点链接模板："
-echo "vless://$vless_uuid@【本机局域网IP】:$vless_port?encryption=none&security=reality&type=tcp&pbk=$publicKey&sid=$shortId&sni=www.apple.com&fp=chrome&flow=xtls-rprx-vision#Termux-Reality-LAN"
-echo "快捷查看信息：bash gv.sh"
+echo "快捷查看信息：bash gv.sh （只输出参数，不是菜单）"
 sleep 3
 exit
 }
 uninstall(){
+# 1. 关闭所有screen会话
+screen -S xrscreen -X quit >/dev/null 2>&1
+# 清理残留detached会话
 PID=$(screen -ls | grep Detached | cut -d. -f1 | awk '{print $1}')
 [ -n "$PID" ] && echo "$PID" | xargs kill
+# 2. 删除全部业务文件
 rm -f xray config.json gv.sh
+# 3. 删除profile.d自启脚本（重点，解决卸载残留）
 rm -f /data/data/com.termux/files/usr/etc/profile.d/xr.sh
-echo "卸载完毕"
+echo "✅ 卸载完毕，所有文件、自启脚本、screen会话全部清理"
+sleep 1
 }
 show_menu(){
 clear
@@ -129,24 +129,43 @@ echo "仅内网TCP Reality，本机流量走系统已有VPN"
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 echo " 1. 重置安装"
 echo " 2. 删除卸载"
+echo " 3. 查看当前节点信息"
+echo " 4. 复制节点链接到剪贴板"
 echo " 0. 退出"
 echo "------------------------------------------------"
-# 判断是否已安装：看gv.sh是否存在
+# 判断是否已安装
 if [[ -e gv.sh ]]; then
-# 直接source gv.sh拿到硬编码的变量
 source ./gv.sh
 echo "当前VLESS端口：$port"
 echo "当前VLESS UUID：$uuid"
 echo "Reality PBK公钥：$pbk"
 echo "shortId：$sid"
 else
-echo "未安装，请选择 1 进行安装"
+echo "⚠️ 未安装，请选择 1 进行安装"
 fi
 echo "------------------------------------------------"
 read -p "请输入数字:" Input
 case "$Input" in
 1 ) xrinstall;;
-2 ) uninstall;;
+2 ) uninstall;show_menu;;
+3 )
+source ./gv.sh
+echo ""
+echo "==== 完整节点链接 ===="
+echo "$link"
+echo ""
+read -p "回车返回菜单"
+show_menu
+;;
+4 )
+source ./gv.sh
+# 复制到剪贴板
+echo "$link" | termux-clipboard-set
+echo "✅ 链接已复制到安卓剪贴板！"
+echo "$link"
+read -p "回车返回菜单"
+show_menu
+;;
 0 ) exit;;
 * ) echo "输入错误";sleep 1;show_menu;;
 esac
