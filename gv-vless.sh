@@ -5,7 +5,6 @@ if [ ! -e xray ]; then
 echo "下载 Xray-core arm64 中……"
 curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/Xray-android-arm64-v8a.zip
 unzip xray-android-arm64-v8a.zip
-# 解压后重命名二进制为xray
 mv xray-android-arm64-v8a xray 2>/dev/null
 chmod +x xray
 fi
@@ -21,16 +20,12 @@ echo "Xray下载失败，请在代理环境下运行脚本" && exit
 fi
 rm -f xray-android-arm64-v8a.zip README* LICENSE*
 
-# Xray内置生成 X25519公私钥（适配你当前Xray输出格式）
 echo "生成X25519公私钥……"
 KEY_OUT=$(./xray x25519)
-privateKey=$(echo "$KEY_OUT" | grep "PrivateKey:" | awk '{print $2}')
-publicKey=$(echo "$KEY_OUT" | grep "Password (PublicKey):" | awk '{print $3}')
+privateKey=$(echo "$KEY_OUT" | sed -n 's/^PrivateKey: //p')
+publicKey=$(echo "$KEY_OUT" | sed -n 's/^Password (PublicKey): //p')
 
-# Xray内置生成UUID
 vless_uuid=$(./xray uuid)
-
-# Termux系统原生/dev/urandom生成shortId，不依赖openssl
 shortId=$(od -An -tx1 -N8 /dev/urandom | tr -d ' \n')
 
 read -p "设置 VLESS+Reality 监听端口（回车随机10000‑65535）：" vless_port
@@ -94,27 +89,20 @@ cat > config.json <<EOF
 }
 EOF
 
-# 写入【修复版gv.sh】，适配当前Xray输出，正则精准读取json
 cat > gv.sh <<'GVSCRIPT'
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
-
 if [ ! -f config.json ];then
     echo "错误：找不到 config.json，请先完成安装"
     exit 1
 fi
-
 port=$(grep -o '"port": [0-9]*' config.json | grep -o '[0-9]*')
 uuid=$(grep -o '"id": "[^"]*"' config.json | grep -o '"[^"]*"' | tr -d '"')
 privkey=$(grep -o '"privateKey": "[^"]*"' config.json | grep -o '"[^"]*"' | tr -d '"')
 shortid=$(grep -o '"shortIds": \["[^"]*"' config.json | grep -o '"[^"]*"' | tr -d '"')
-
-# 私钥反推公钥，匹配你Xray的Password (PublicKey)输出
-pbk=$(./xray x25519 -private "$privkey" 2>/dev/null | grep "Password (PublicKey):" | awk '{print $3}')
-
+pbk=$(./xray x25519 -private "$privkey" 2>/dev/null | sed -n 's/^Password (PublicKey): //p')
 sni="www.microsoft.com"
 fp="chrome"
-
 echo "==== 当前VLESS+Reality配置 ===="
 echo "端口: $port"
 echo "UUID: $uuid"
@@ -129,7 +117,6 @@ echo "⚠️ 提示：把【你的手机内网IP】替换成Termux手机局域�
 GVSCRIPT
 chmod +x gv.sh
 
-# profile.d开机自启配置
 cd /data/data/com.termux/files/usr/etc/profile.d
 echo '#!/data/data/com.termux/files/usr/bin/bash' > xr.sh
 echo 'screen -wipe' >> xr.sh
@@ -145,7 +132,6 @@ exit
 }
 
 uninstall(){
-# 杀掉xray screen会话
 screen -ls | grep Detached | cut -d. -f1 | awk '{print $1}' | xargs kill
 rm -f xray config.json gv.sh
 rm -f /data/data/com.termux/files/usr/etc/profile.d/xr.sh
