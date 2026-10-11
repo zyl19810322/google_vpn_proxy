@@ -22,6 +22,10 @@ read -p "设置 VLESS 监听端口（回车默认59322）：" vless_port
 if [ -z "$vless_port" ]; then
 vless_port=59322
 fi
+read -p "设置 VLESS UUID（回车自动生成UUID）：" vless_uuid
+if [ -z "$vless_uuid" ]; then
+vless_uuid=$(cat /proc/sys/kernel/random/uuid)
+fi
 read -p "设置 SOCKS5 监听端口（回车默认1080）：" socks_port
 if [ -z "$socks_port" ]; then
 socks_port=1080
@@ -29,11 +33,6 @@ fi
 read -p "设置 HTTP 代理监听端口（回车默认8080）：" http_port
 if [ -z "$http_port" ]; then
 http_port=8080
-fi
-
-read -p "设置 VLESS UUID（回车自动生成UUID）：" vless_uuid
-if [ -z "$vless_uuid" ]; then
-vless_uuid=$(cat /proc/sys/kernel/random/uuid)
 fi
 
 echo "================参数预览================"
@@ -210,7 +209,7 @@ sleep 1
 
 show_menu(){
 clear
-echo "===== Xray三合一 主菜单 ====="
+echo "===== Xray三合一（VLESS+HTTP+SOCKS5）安装 ====="
 echo "1 安装"
 echo "0 退出"
 echo "-----------------------------"
