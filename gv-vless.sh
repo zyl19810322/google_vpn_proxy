@@ -3,7 +3,7 @@ xrinstall(){
 pkg install -y screen jq
 if [ ! -e xray ]; then
 echo "下载 Xray-core arm64 中……"
-curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl1981/xray-arm64/main/xray-android-arm64-v8a.zip
+curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl19810322/main/xray-android-arm64-v8a.zip
 unzip xray-android-arm64-v8a.zip
 mv xray-android-arm64-v8a xray 2>/dev/null
 chmod +x xray
