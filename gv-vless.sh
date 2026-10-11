@@ -10,7 +10,7 @@ fi
 if [ ! -e xray ]; then
 echo "xray下载失败，请在代理环境下运行脚本" && exit
 fi
-rm -f xray.zip README* LICENSE*
+rm -f xray.zip
 
 # 生成密钥
 KEY_OUT=$(./xray x25519)
