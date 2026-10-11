@@ -11,30 +11,42 @@ if [ ! -e xray ]; then
 echo "xray下载失败，请在代理环境下运行脚本" && exit
 fi
 rm -f xray.zip
-
-# 生成密钥
+# 生成Reality密钥
 KEY_OUT=$(./xray x25519)
 privateKey=$(echo "$KEY_OUT" | sed -n 's/^PrivateKey: //p')
 publicKey=$(echo "$KEY_OUT" | sed -n 's/^Password (PublicKey): //p')
 shortId=$(od -An -tx1 -N8 /dev/urandom | tr -d ' \n')
 
-read -p "设置 VLESS 监听端口（回车随机10000-65535）：" vless_port
+# 端口设定：VLESS默认59322，SOCKS5默认1080，HTTP默认8080
+read -p "设置 VLESS 监听端口（回车默认59322）：" vless_port
 if [ -z "$vless_port" ]; then
-vless_port=$(shuf -i 10000-65535 -n 1)
+vless_port=59322
 fi
+read -p "设置 SOCKS5 监听端口（回车默认1080）：" socks_port
+if [ -z "$socks_port" ]; then
+socks_port=1080
+fi
+read -p "设置 HTTP 代理监听端口（回车默认8080）：" http_port
+if [ -z "$http_port" ]; then
+http_port=8080
+fi
+
 read -p "设置 VLESS UUID（回车自动生成UUID）：" vless_uuid
 if [ -z "$vless_uuid" ]; then
 vless_uuid=$(cat /proc/sys/kernel/random/uuid)
 fi
 
-echo "VLESS端口：$vless_port"
+echo "================参数预览================"
+echo "VLESS(Reality)端口：$vless_port"
+echo "SOCKS5端口：$socks_port"
+echo "HTTP代理端口：$http_port"
 echo "VLESS UUID：$vless_uuid"
 echo "Reality私钥：$privateKey"
 echo "Reality公钥(pbk)：$publicKey"
 echo "shortId：$shortId"
 sleep 2
 
-# config.json
+# 三合一 config.json
 cat > config.json <<EOF
 {
 "inbounds": [
@@ -63,6 +75,21 @@ cat > config.json <<EOF
 "shortIds": ["$shortId"]
 }
 }
+},
+{
+"port": $socks_port,
+"listen": "0.0.0.0",
+"protocol": "socks",
+"settings": {
+"auth": "noauth",
+"udp": true
+}
+},
+{
+"port": $http_port,
+"listen": "0.0.0.0",
+"protocol": "http",
+"settings": {}
 }
 ],
 "outbounds": [
@@ -74,17 +101,20 @@ cat > config.json <<EOF
 }
 EOF
 
-# ========= 生成gv.sh，菜单移除复制剪贴板选项 =========
+# 生成gv.sh管理脚本，菜单展示全部3个端口与链接
 cat > gv.sh <<GVSCRIPT
 #!/data/data/com.termux/files/usr/bin/bash
-# 硬编码保存参数，安装一次性写入
 port="$vless_port"
+socksport="$socks_port"
+httpport="$http_port"
 uuid="$vless_uuid"
 pbk="$publicKey"
 sid="$shortId"
-link="vless://\$uuid@你的手机内网IP:\$port?encryption=none&security=reality&type=tcp&pbk=\$pbk&sid=\$sid&sni=www.apple.com&fp=chrome&flow=xtls-rprx-vision#LAN-Reality"
 
-# 重置安装函数
+vless_link="vless://\$uuid@你的手机内网IP:\$port?encryption=none&security=reality&type=tcp&pbk=\$pbk&sid=\$sid&sni=www.apple.com&fp=chrome&flow=xtls-rprx-vision#LAN-VLESS-Reality"
+socks_link="socks5://你的手机内网IP:\$socksport"
+http_link="http://你的手机内网IP:\$httpport"
+
 reset_install(){
   echo "⚠️ 重置安装，会重新生成密钥，旧配置失效！"
   read -p "确认继续？(y/N) " ans
@@ -94,11 +124,9 @@ reset_install(){
     menu
     return
   fi
-  # 调用主脚本重新执行安装
   bash "\$0"
 }
 
-# 卸载全部函数
 uninstall_all(){
   echo "⚠️ 卸载将停止服务，删除所有配置文件！"
   read -p "确认卸载？(y/N) " ans
@@ -119,24 +147,33 @@ uninstall_all(){
 
 menu(){
 clear
-echo "===== GV 节点管理菜单 ====="
-echo "端口: \$port"
+echo "===== Xray三合一代理管理菜单 ====="
+echo "VLESS-Reality 端口: \$port"
+echo "SOCKS5        端口: \$socksport"
+echo "HTTP          端口: \$httpport"
 echo "UUID: \$uuid"
 echo "PBK: \$pbk"
 echo "shortId: \$sid"
-echo "---------------------------"
+echo "----------------------------------"
 echo "1 重置安装（重新生成密钥与配置）"
 echo "2 卸载全部"
-echo "3 查看完整节点链接"
+echo "3 查看全部节点链接"
 echo "0 退出"
-echo "---------------------------"
+echo "----------------------------------"
 read -p "请选择：" opt
 case \$opt in
 1) reset_install;;
 2) uninstall_all;;
 3)
 echo ""
-echo "\$link"
+echo "VLESS Reality 链接："
+echo "\$vless_link"
+echo ""
+echo "SOCKS5 链接："
+echo "\$socks_link"
+echo ""
+echo "HTTP代理链接："
+echo "\$http_link"
 echo ""
 read -p "回车返回菜单"
 menu
@@ -149,7 +186,7 @@ menu
 GVSCRIPT
 chmod +x gv.sh
 
-# profile.d自启
+# termux profile自启配置
 cd /data/data/com.termux/files/usr/etc/profile.d
 echo '#!/data/data/com.termux/files/usr/bin/bash' > xr.sh
 echo 'PID=$(screen -ls | grep Detached | cut -d. -f1 | awk "{print \$1}")' >> xr.sh
@@ -157,8 +194,9 @@ echo '[ -n "$PID" ] && echo "$PID" | xargs kill' >> xr.sh
 echo "screen -dmS xrscreen bash -c './xray run -c config.json'" >> xr.sh
 chmod +x xr.sh
 
-echo "===== 安装完成 ====="
-echo "日常管理直接运行：bash gv.sh"
+echo "===== ✅ 三合一安装完成 ====="
+echo "VLESS:59322 | SOCKS5:1080 | HTTP:8080"
+echo "日常管理命令：bash gv.sh"
 sleep 3
 exit
 }
@@ -175,11 +213,11 @@ sleep 1
 
 show_menu(){
 clear
-echo "===== 主安装管理菜单 ====="
-echo "1 重置安装（重新生成密钥与配置）"
+echo "===== Xray三合一 主菜单 ====="
+echo "1 安装/重置三合一代理(VLESS+SOCKS5+HTTP)"
 echo "2 卸载全部"
 echo "0 退出"
-echo "---------------------------"
+echo "-----------------------------"
 read -p "请选择：" Input
 case "$Input" in
 1 ) xrinstall;;
