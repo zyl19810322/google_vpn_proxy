@@ -5,12 +5,15 @@ if [ ! -e xray ]; then
 echo "下载 Xray-core arm64 中……"
 curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/Xray-android-arm64-v8a.zip
 unzip xray-android-arm64-v8a.zip
+# 解压后重命名二进制为xray
+mv xray-android-arm64-v8a xray 2>/dev/null
 chmod +x xray
 fi
 if [ ! -e xray ]; then
 echo "Github直连失败，切换ghproxy中转"
 curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://gh-proxy.com/https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/Xray-android-arm64-v8a.zip
 unzip xray-android-arm64-v8a.zip
+mv xray-android-arm64-v8a xray 2>/dev/null
 chmod +x xray
 fi
 if [ ! -e xray ]; then
@@ -18,11 +21,11 @@ echo "Xray下载失败，请在代理环境下运行脚本" && exit
 fi
 rm -f xray-android-arm64-v8a.zip README* LICENSE*
 
-# Xray内置生成 X25519公私钥
+# Xray内置生成 X25519公私钥（适配你当前Xray输出格式）
 echo "生成X25519公私钥……"
 KEY_OUT=$(./xray x25519)
-privateKey=$(echo "$KEY_OUT" | grep "Private key" | awk '{print $3}')
-publicKey=$(echo "$KEY_OUT" | grep "Public key" | awk '{print $3}')
+privateKey=$(echo "$KEY_OUT" | grep "PrivateKey:" | awk '{print $2}')
+publicKey=$(echo "$KEY_OUT" | grep "Password (PublicKey):" | awk '{print $3}')
 
 # Xray内置生成UUID
 vless_uuid=$(./xray uuid)
@@ -91,7 +94,7 @@ cat > config.json <<EOF
 }
 EOF
 
-# 写入修复版gv.sh
+# 写入【修复版gv.sh】，适配当前Xray输出，正则精准读取json
 cat > gv.sh <<'GVSCRIPT'
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
@@ -101,12 +104,13 @@ if [ ! -f config.json ];then
     exit 1
 fi
 
-port=$(grep '"port"' config.json | head -1 | awk '{print $2}' | tr -d ',')
-uuid=$(grep '"id"' config.json | head -1 | awk '{print $2}' | tr -d '"')
-privkey=$(grep '"privateKey"' config.json | head -1 | awk '{print $2}' | tr -d '"')
-shortid=$(grep '"shortIds"' -A1 config.json | grep -v shortIds | awk '{print $1}' | tr -d '["],')
+port=$(grep -o '"port": [0-9]*' config.json | grep -o '[0-9]*')
+uuid=$(grep -o '"id": "[^"]*"' config.json | grep -o '"[^"]*"' | tr -d '"')
+privkey=$(grep -o '"privateKey": "[^"]*"' config.json | grep -o '"[^"]*"' | tr -d '"')
+shortid=$(grep -o '"shortIds": \["[^"]*"' config.json | grep -o '"[^"]*"' | tr -d '"')
 
-pbk=$(./xray x25519 -private "$privkey" 2>/dev/null | grep "Public key" | awk '{print $3}')
+# 私钥反推公钥，匹配你Xray的Password (PublicKey)输出
+pbk=$(./xray x25519 -private "$privkey" 2>/dev/null | grep "Password (PublicKey):" | awk '{print $3}')
 
 sni="www.microsoft.com"
 fp="chrome"
@@ -125,7 +129,7 @@ echo "⚠️ 提示：把【你的手机内网IP】替换成Termux手机局域�
 GVSCRIPT
 chmod +x gv.sh
 
-# profile.d自启
+# profile.d开机自启配置
 cd /data/data/com.termux/files/usr/etc/profile.d
 echo '#!/data/data/com.termux/files/usr/bin/bash' > xr.sh
 echo 'screen -wipe' >> xr.sh
@@ -134,13 +138,14 @@ echo "screen -dmS xrscreen bash -c './xray run -c config.json'" >> xr.sh
 chmod +x xr.sh
 
 echo "===== VLESS+Reality 安装完成 ====="
-echo "内网节点链接模板请运行 bash gv.sh 获取"
+echo "运行命令 bash gv.sh 查看完整节点链接"
 echo "👉霓虹络直接粘贴导入，无需任何证书！"
 sleep 3
 exit
 }
 
 uninstall(){
+# 杀掉xray screen会话
 screen -ls | grep Detached | cut -d. -f1 | awk '{print $1}' | xargs kill
 rm -f xray config.json gv.sh
 rm -f /data/data/com.termux/files/usr/etc/profile.d/xr.sh
@@ -159,10 +164,10 @@ echo " 2. 删除卸载"
 echo " 0. 退出脚本"
 echo "------------------------------------------------"
 if [[ -e config.json ]]; then
-vless_port_now=$(cat config.json | grep port | head -1 | awk '{print $2}' | tr -d ',')
-vless_uuid_now=$(cat config.json | grep id | head -1 | awk '{print $2}' | tr -d '"')
-echo "当前VLESS+Reality端口：$vless_port_now"
-echo "当前UUID：$vless_uuid_now"
+port_now=$(grep -o '"port": [0-9]*' config.json | grep -o '[0-9]*')
+uuid_now=$(grep -o '"id": "[^"]*"' config.json | grep -o '"[^"]*"' | tr -d '"')
+echo "当前VLESS+Reality端口：$port_now"
+echo "当前UUID：$uuid_now"
 else
 echo "未安装，请选择 1 进行安装"
 fi
