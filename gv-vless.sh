@@ -26,7 +26,7 @@ rm -f xray-android-arm64-v8a.zip README* LICENSE*
 # ========== 新增：自动生成Reality密钥对 ==========
 KEY_OUT=$(./xray x25519)
 privateKey=$(echo "$KEY_OUT" | sed -n 's/^PrivateKey: //p')
-publicKey=$(echo "$KEY_OUT" | sed -n 's/^PublicKey: //p')
+publicKey=$(echo "$KEY_OUT" | sed -n 's/^(PublicKey): //p')
 # 随机生成shortId 16位十六进制
 shortId=$(openssl rand -hex 8)
 
