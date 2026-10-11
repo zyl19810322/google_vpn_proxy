@@ -1,55 +1,48 @@
 #!/bin/bash
 xrinstall(){
-pkg install -y screen jq iproute2
+pkg install -y screen jq
 if [ ! -e xray ]; then
 echo "下载 Xray-core arm64 中……"
-curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/Xray-android-arm64-v8a.zip
+curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl1981/xray-arm64/main/xray-android-arm64-v8a.zip
 unzip xray-android-arm64-v8a.zip
 mv xray-android-arm64-v8a xray 2>/dev/null
 chmod +x xray
 fi
 if [ ! -e xray ]; then
-echo "Github直连失败，切换ghproxy中转"
-curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://gh-proxy.com/https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/Xray-android-arm64-v8a.zip
-unzip xray-android-arm64-v8a.zip
-mv xray-android-arm64-v8a xray 2>/dev/null
-chmod +x xray
-fi
-if [ ! -e xray ]; then
-echo "Xray下载失败，请在代理环境下运行脚本" && exit
+echo "Xray下载失败，请检查网络" && exit
 fi
 rm -f xray-android-arm64-v8a.zip README* LICENSE*
 
-echo "生成X25519公私钥……"
+echo "生成X25519公私钥对……"
 KEY_OUT=$(./xray x25519)
 privateKey=$(echo "$KEY_OUT" | sed -n 's/^PrivateKey: //p')
-publicKey=$(echo "$KEY_OUT" | sed -n 's/^Password (PublicKey): //p')
+publicKey=$(echo "$KEY_OUT" | sed -n 's/^PublicKey: //p')
 
 vless_uuid=$(./xray uuid)
 shortId=$(od -An -tx1 -N8 /dev/urandom | tr -d ' \n')
 
-read -p "设置 VLESS+Reality 监听端口（回车随机10000‑65535）：" vless_port
+read -p "设置 VLESS+Reality 端口(默认34345): " vless_port
 if [ -z "$vless_port" ]; then
-vless_port=$(shuf -i 10000-65535 -n 1)
+vless_port=34345
 fi
 
 echo
-echo "==== 生成参数 ===="
+echo "==== 生成密钥参数 ===="
 echo "端口         : $vless_port"
 echo "UUID         : $vless_uuid"
 echo "服务端私钥   : $privateKey"
-echo "客户端公钥pbk: $publicKey"
+echo "客户端pbk公钥: $publicKey"
 echo "shortId(sid) : $shortId"
-echo "SNI          : www.microsoft.com"
+echo "SNI          : www.apple.com"
 echo
-sleep 2
 
+# ========== config.json 更换为apple，无DNS ==========
 cat > config.json <<EOF
 {
   "inbounds": [
     {
-      "port": $vless_port,
       "listen": "0.0.0.0",
+      "port": $vless_port,
       "protocol": "vless",
       "settings": {
         "clients": [
@@ -64,32 +57,26 @@ cat > config.json <<EOF
         "network": "tcp",
         "security": "reality",
         "realitySettings": {
-          "dest": "www.microsoft.com:443",
-          "serverNames": ["www.microsoft.com"],
+          "show": false,
+          "dest": "www.apple.com:443",
+          "xver": 0,
+          "serverNames": ["www.apple.com"],
           "privateKey": "$privateKey",
-          "shortIds": ["$shortId"],
-          "fingerprint": "chrome"
+          "shortIds": ["$shortId"]
         }
       }
     }
   ],
   "outbounds": [
     {
-      "tag": "direct",
       "protocol": "freedom",
-      "settings": {}
+      "tag": "direct"
     }
-  ],
-  "dns": {
-    "servers": [
-      "8.8.8.8",
-      "8.8.4.4"
-    ]
-  }
+  ]
 }
 EOF
 
-# 生成gv.sh，只输出参数，链接预留IP位置，手动填写
+# 生成gv.sh，sni替换为apple，带flow
 cat > gv.sh <<GVSCRIPT
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
@@ -104,57 +91,52 @@ echo "UUID: \$uuid_val"
 echo "pbk公钥: \$pbk_val"
 echo "sid shortId: \$sid_val"
 echo
-echo "✅模板链接（把【IP】替换成你手机内网IP）："
-echo "vless://\$uuid_val@【IP】:\$port_val?encryption=none&security=reality&type=tcp&pbk=\$pbk_val&sid=\$sid_val&sni=www.microsoft.com&fp=chrome#LAN-VLESS-Reality"
+echo "✅完整节点链接（把【IP】替换为Pixel内网IP）："
+echo "vless://\$uuid_val@【IP】:\$port_val?encryption=none&security=reality&type=tcp&pbk=\$pbk_val&sid=\$sid_val&sni=www.apple.com&fp=chrome&flow=xtls-rprx-vision#GoogleVPN-VLESS"
 GVSCRIPT
 chmod +x gv.sh
 
-cd /data/data/com.termux/files/usr/etc/profile.d
-echo '#!/data/data/com.termux/files/usr/bin/bash' > xr.sh
-echo 'screen -wipe' >> xr.sh
-echo "screen -ls | grep Detached | cut -d. -f1 | awk '{print \$1}' | xargs kill" >> xr.sh
-echo "screen -dmS xrscreen bash -c './xray run -c config.json'" >> xr.sh
-chmod +x xr.sh
+# termux开机自启
+mkdir -p /data/data/com.termux/files/home/.config/termux/boot
+cat > /data/data/com.termux/files/home/.config/termux/boot/start-xray.sh <<BOOT
+#!/data/data/com.termux/files/usr/bin/bash
+cd \$HOME
+screen -S xrscreen -dm ./xray run -c config.json
+BOOT
+chmod +x /data/data/com.termux/files/home/.config/termux/boot/start-xray.sh
 
-echo "===== VLESS+Reality 安装完成 ====="
-echo "运行命令 bash gv.sh 查看参数与链接模板"
-echo "👉霓虹络导入前，手动替换【IP】为手机局域网IP"
+echo "===== 安装完成 ====="
+echo "1. 校验配置： ./xray test -c config.json"
+echo "2. 前台启动： ./xray run -c config.json"
+echo "3. 后台screen启动：screen -S xrscreen ./xray run -c config.json"
+echo "4. 查看节点链接： bash gv.sh"
+echo "⚠️仅内网局域网使用！"
 sleep 3
 exit
 }
 
 uninstall(){
-screen -ls | grep Detached | cut -d. -f1 | awk '{print $1}' | xargs kill
+screen -ls | grep xrscreen | awk '{print $1}' | xargs -I{} screen -S {} -X quit
 rm -f xray config.json gv.sh
-rm -f /data/data/com.termux/files/usr/etc/profile.d/xr.sh
-echo "卸载完成，已清理所有文件与自启项"
+rm -f /data/data/com.termux/files/home/.config/termux/boot/start-xray.sh
+echo "卸载完成，文件全部清理"
 }
 
 show_menu(){
 clear
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-echo "Google_VPN局域网共享代理【VLESS+Reality版】"
-echo "Xray内核 | 无需证书 | 内网局域网专用"
-echo "项目地址：github.com/zyl19810322/google_vpn_proxy"
+echo "      内网 VLESS+Reality 一键部署脚本"
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-echo " 1. 重置安装 VLESS+Reality"
-echo " 2. 删除卸载"
+echo " 1. 一键安装/重置配置"
+echo " 2. 卸载全部文件"
 echo " 0. 退出脚本"
 echo "------------------------------------------------"
-if [[ -e config.json ]]; then
-port_now=$(jq '.inbounds[0].port' config.json)
-uuid_now=$(jq -r '.inbounds[0].settings.clients[0].id' config.json)
-echo "当前VLESS+Reality端口：$port_now"
-echo "当前UUID：$uuid_now"
-else
-echo "未安装，请选择 1 进行安装"
-fi
-echo "------------------------------------------------"
-read -p "请输入数字:" Input
-case "$Input" in
- 1 ) xrinstall;;
- 2 ) uninstall;;
- * ) exit
+read -p "请输入选项:" opt
+case $opt in
+1) xrinstall;;
+2) uninstall;;
+0) exit;;
+*) echo "输入错误";sleep 1;show_menu;;
 esac
 }
 show_menu
