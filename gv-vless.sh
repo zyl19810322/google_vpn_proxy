@@ -193,7 +193,7 @@ echo '[ -n "$PID" ] && echo "$PID" | xargs kill' >> xr.sh
 echo "screen -dmS xrscreen bash -c './xray run -c config.json'" >> xr.sh
 chmod +x xr.sh
 
-echo "✅ 安装完成，日常管理命令：bash gv.sh"
+echo "✅ 安装完成，日常管理: bash gv.sh"
 sleep 1
 exit
 }
