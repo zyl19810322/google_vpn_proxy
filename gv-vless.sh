@@ -28,7 +28,7 @@ KEY_OUT=$(./xray x25519)
 privateKey=$(echo "$KEY_OUT" | sed -n 's/^PrivateKey: //p')
 publicKey=$(echo "$KEY_OUT" | sed -n 's/^(PublicKey): //p')
 # 随机生成shortId 16位十六进制
-shortId=$(openssl rand -hex 8)
+shortId=$(od -An -tx1 -N8 /dev/urandom | tr -d ' \n')
 
 # 输入配置
 read -p "设置 VLESS 监听端口（回车随机10000-65535）：" vless_port
