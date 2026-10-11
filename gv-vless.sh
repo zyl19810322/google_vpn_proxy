@@ -148,12 +148,13 @@ uninstall_all(){
 menu(){
 clear
 echo "===== Xray代理管理菜单 ====="
-echo "SOCKS5 端口: \$socksport HTTP 端口: \$httpport"
-echo "VLESS-Reality 主要参数"
-echo " 端口: \$port"
-echo " UUID: \$uuid"
-echo " PBK: \$pbk"
-echo " shortId: \$sid"
+echo "SOCKS5 端口: \$socksport"
+echo "HTTP 端口: \$httpport"
+echo "VLESS-Reality"
+echo "  端口: \$port"
+echo "  UUID: \$uuid"
+echo "  PBK: \$pbk"
+echo "  shortId: \$sid"
 echo "----------------------------------"
 echo "1 重置安装（重新生成密钥与配置）"
 echo "2 卸载全部"
@@ -178,8 +179,7 @@ echo ""
 read -p "回车返回菜单"
 menu
 ;;
-0) exit;;
-*) echo "输入错误";sleep 1;menu;;
+*) exit;;
 esac
 }
 menu
@@ -214,15 +214,12 @@ show_menu(){
 clear
 echo "===== Xray三合一 主菜单 ====="
 echo "1 安装/重置代理(VLESS+SOCKS5+HTTP)"
-echo "2 卸载全部"
 echo "0 退出"
 echo "-----------------------------"
 read -p "请选择：" Input
 case "$Input" in
 1 ) xrinstall;;
-2 ) uninstall;show_menu;;
-0 ) exit;;
-* ) echo "输入错误";sleep 1;show_menu;;
+* ) exit;;
 esac
 }
 show_menu
