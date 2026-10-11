@@ -1,6 +1,6 @@
 #!/bin/bash
 xrinstall(){
-pkg install -y screen jq
+pkg install -y screen jq net-tools
 if [ ! -e xray ]; then
 echo "下载 Xray-core arm64 中……"
 curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/Xray-android-arm64-v8a.zip
@@ -89,33 +89,25 @@ cat > config.json <<EOF
 }
 EOF
 
-# 【JQ版gv.sh，不会乱行】
-cat > gv.sh <<'GVSCRIPT'
+# 直接把pbk、参数写入gv.sh，不再调用xray反推
+cat > gv.sh <<GVSCRIPT
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
-if [ ! -f config.json ];then
-    echo "错误：找不到 config.json，请先完成安装"
-    exit 1
-fi
-port=$(jq '.inbounds[0].port' config.json)
-uuid=$(jq -r '.inbounds[0].settings.clients[0].id' config.json)
-privkey=$(jq -r '.inbounds[0].streamSettings.realitySettings.privateKey' config.json)
-shortid=$(jq -r '.inbounds[0].streamSettings.realitySettings.shortIds[0]' config.json)
-pbk=$(./xray x25519 -private "$privkey" 2>/dev/null | sed -n 's/^Password (PublicKey): //p')
-sni="www.microsoft.com"
-fp="chrome"
-# 获取本机wlan内网IP
-lan_ip=$(ip addr | grep -E 'inet.*wlan' | awk '{print $2}' | cut -d/ -f1 | head -n1)
+pbk_val="$publicKey"
+sid_val="$shortId"
+uuid_val="$vless_uuid"
+port_val="$vless_port"
+# 获取wifi内网IP
+lan_ip=\$(ifconfig wlan0 | grep 'inet ' | awk '{print \$2}')
 echo "==== 当前VLESS+Reality配置 ===="
-echo "内网IP: $lan_ip"
-echo "端口: $port"
-echo "UUID: $uuid"
-echo "服务端私钥: $privkey"
-echo "pbk公钥: $pbk"
-echo "sid shortId: $shortid"
+echo "内网IP: \$lan_ip"
+echo "端口: \$port_val"
+echo "UUID: \$uuid_val"
+echo "pbk公钥: \$pbk_val"
+echo "sid shortId: \$sid_val"
 echo
 echo "✅完整节点链接（直接复制）："
-echo "vless://$uuid@$lan_ip:$port?encryption=none&security=reality&type=tcp&pbk=$pbk&sid=$shortid&sni=$sni&fp=$fp#LAN-VLESS-Reality"
+echo "vless://\$uuid_val@\$lan_ip:\$port_val?encryption=none&security=reality&type=tcp&pbk=\$pbk_val&sid=\$sid_val&sni=www.microsoft.com&fp=chrome#LAN-VLESS-Reality"
 GVSCRIPT
 chmod +x gv.sh
 
