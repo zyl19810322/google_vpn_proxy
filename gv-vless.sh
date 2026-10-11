@@ -89,29 +89,24 @@ cat > config.json <<EOF
 }
 EOF
 
-# 直接生成gv.sh，把所有参数一次性写死进文件
-cat > gv.sh <<'GVSCRIPT'
+# 生成gv.sh，只输出参数，链接预留IP位置，手动填写
+cat > gv.sh <<GVSCRIPT
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
-# 获取局域网IP
-lan_ip=$(ip route | grep -E 'src [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n1 | awk '{print $9}')
-echo "==== 当前VLESS+Reality配置 ===="
-echo "内网IP: '"$lan_ip"'"
-GVSCRIPT
-# 追加固定参数到gv.sh
-echo "pbk_val=\"$publicKey\"" >> gv.sh
-echo "sid_val=\"$shortId\"" >> gv.sh
-echo "uuid_val=\"$vless_uuid\"" >> gv.sh
-echo "port_val=\"$vless_port\"" >> gv.sh
-cat >> gv.sh <<'GVSCRIPT2'
-echo "端口: $port_val"
-echo "UUID: $uuid_val"
-echo "pbk公钥: $pbk_val"
-echo "sid shortId: $sid_val"
+pbk_val="$publicKey"
+sid_val="$shortId"
+uuid_val="$vless_uuid"
+port_val="$vless_port"
+
+echo "==== VLESS Reality 参数 ===="
+echo "端口: \$port_val"
+echo "UUID: \$uuid_val"
+echo "pbk公钥: \$pbk_val"
+echo "sid shortId: \$sid_val"
 echo
-echo "✅完整节点链接（直接复制）："
-echo "vless://$uuid_val@$lan_ip:$port_val?encryption=none&security=reality&type=tcp&pbk=$pbk_val&sid=$sid_val&sni=www.microsoft.com&fp=chrome#LAN-VLESS-Reality"
-GVSCRIPT2
+echo "✅模板链接（把【IP】替换成你手机内网IP）："
+echo "vless://\$uuid_val@【IP】:\$port_val?encryption=none&security=reality&type=tcp&pbk=\$pbk_val&sid=\$sid_val&sni=www.microsoft.com&fp=chrome#LAN-VLESS-Reality"
+GVSCRIPT
 chmod +x gv.sh
 
 cd /data/data/com.termux/files/usr/etc/profile.d
@@ -122,8 +117,8 @@ echo "screen -dmS xrscreen bash -c './xray run -c config.json'" >> xr.sh
 chmod +x xr.sh
 
 echo "===== VLESS+Reality 安装完成 ====="
-echo "运行命令 bash gv.sh 查看完整节点链接"
-echo "👉霓虹络直接粘贴导入，无需任何证书！"
+echo "运行命令 bash gv.sh 查看参数与链接模板"
+echo "👉霓虹络导入前，手动替换【IP】为手机局域网IP"
 sleep 3
 exit
 }
