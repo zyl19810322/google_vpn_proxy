@@ -2,16 +2,16 @@
 xrinstall(){
 pkg install -y screen jq
 if [ ! -e xray ]; then
-echo "下载 Xray-core arm64 官方包……"
-# Xray官方arm64安卓版本
-curl -L -o xray.zip -# --retry 2 --insecure https://github.com/XTLS/Xray-core/releases/latest/download/Xray-android-arm64.zip
-unzip xray.zip
+echo "下载 Xray-core arm64 中……"
+curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl1981/xray-arm64/main/xray-android-arm64-v8a.zip
+unzip xray-android-arm64-v8a.zip
+mv xray-android-arm64-v8a xray 2>/dev/null
 chmod +x xray
 fi
 if [ ! -e xray ]; then
-echo "Xray下载/解压失败，请检查网络" && exit
+echo "Xray下载失败，请检查网络" && exit
 fi
-rm -f xray.zip README* LICENSE*
+rm -f xray-android-arm64-v8a.zip README* LICENSE*
 
 echo "生成X25519公私钥对……"
 KEY_OUT=$(./xray x25519)
@@ -36,7 +36,7 @@ echo "shortId(sid) : $shortId"
 echo "SNI          : www.apple.com"
 echo
 
-# ========== config.json apple，无DNS ==========
+# ========== config.json 更换为apple，无DNS ==========
 cat > config.json <<EOF
 {
   "inbounds": [
@@ -76,7 +76,7 @@ cat > config.json <<EOF
 }
 EOF
 
-# 生成gv.sh，带flow
+# 生成gv.sh，sni替换为apple，带flow
 cat > gv.sh <<GVSCRIPT
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
@@ -117,7 +117,7 @@ exit
 
 uninstall(){
 screen -ls | grep xrscreen | awk '{print $1}' | xargs -I{} screen -S {} -X quit
-rm -f xray config.json gv.sh xray.zip
+rm -f xray config.json gv.sh
 rm -f /data/data/com.termux/files/home/.config/termux/boot/start-xray.sh
 echo "卸载完成，文件全部清理"
 }
