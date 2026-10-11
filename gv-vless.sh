@@ -1,6 +1,6 @@
 #!/bin/bash
 xrinstall(){
-pkg install -y screen
+pkg install -y screen jq
 if [ ! -e xray ]; then
 echo "下载 Xray-core arm64 中……"
 curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/Xray-android-arm64-v8a.zip
@@ -89,6 +89,7 @@ cat > config.json <<EOF
 }
 EOF
 
+# gv.sh 使用jq解析JSON，彻底解决多行json错乱问题
 cat > gv.sh <<'GVSCRIPT'
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
@@ -96,10 +97,10 @@ if [ ! -f config.json ];then
     echo "错误：找不到 config.json，请先完成安装"
     exit 1
 fi
-port=$(grep -o '"port": [0-9]*' config.json | grep -o '[0-9]*')
-uuid=$(grep -o '"id": "[^"]*"' config.json | grep -o '"[^"]*"' | tr -d '"')
-privkey=$(grep -o '"privateKey": "[^"]*"' config.json | grep -o '"[^"]*"' | tr -d '"')
-shortid=$(grep -o '"shortIds": \["[^"]*"' config.json | grep -o '"[^"]*"' | tr -d '"')
+port=$(jq '.inbounds[0].port' config.json)
+uuid=$(jq -r '.inbounds[0].settings.clients[0].id' config.json)
+privkey=$(jq -r '.inbounds[0].streamSettings.realitySettings.privateKey' config.json)
+shortid=$(jq -r '.inbounds[0].streamSettings.realitySettings.shortIds[0]' config.json)
 pbk=$(./xray x25519 -private "$privkey" 2>/dev/null | sed -n 's/^Password (PublicKey): //p')
 sni="www.microsoft.com"
 fp="chrome"
@@ -150,8 +151,8 @@ echo " 2. 删除卸载"
 echo " 0. 退出脚本"
 echo "------------------------------------------------"
 if [[ -e config.json ]]; then
-port_now=$(grep -o '"port": [0-9]*' config.json | grep -o '[0-9]*')
-uuid_now=$(grep -o '"id": "[^"]*"' config.json | grep -o '"[^"]*"' | tr -d '"')
+port_now=$(jq '.inbounds[0].port' config.json)
+uuid_now=$(jq -r '.inbounds[0].settings.clients[0].id' config.json)
 echo "当前VLESS+Reality端口：$port_now"
 echo "当前UUID：$uuid_now"
 else
