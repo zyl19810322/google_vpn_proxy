@@ -1,6 +1,6 @@
 #!/bin/bash
 xrinstall(){
-pkg install -y screen jq net-tools
+pkg install -y screen jq iproute2
 if [ ! -e xray ]; then
 echo "下载 Xray-core arm64 中……"
 curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/Xray-android-arm64-v8a.zip
@@ -89,26 +89,29 @@ cat > config.json <<EOF
 }
 EOF
 
-# 直接把pbk、参数写入gv.sh，不再调用xray反推
-cat > gv.sh <<GVSCRIPT
+# 直接生成gv.sh，把所有参数一次性写死进文件
+cat > gv.sh <<'GVSCRIPT'
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
-pbk_val="$publicKey"
-sid_val="$shortId"
-uuid_val="$vless_uuid"
-port_val="$vless_port"
-# 获取wifi内网IP
-lan_ip=\$(ifconfig wlan0 | grep 'inet ' | awk '{print \$2}')
+# 获取局域网IP
+lan_ip=$(ip route | grep -E 'src [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n1 | awk '{print $9}')
 echo "==== 当前VLESS+Reality配置 ===="
-echo "内网IP: \$lan_ip"
-echo "端口: \$port_val"
-echo "UUID: \$uuid_val"
-echo "pbk公钥: \$pbk_val"
-echo "sid shortId: \$sid_val"
+echo "内网IP: '"$lan_ip"'"
+GVSCRIPT
+# 追加固定参数到gv.sh
+echo "pbk_val=\"$publicKey\"" >> gv.sh
+echo "sid_val=\"$shortId\"" >> gv.sh
+echo "uuid_val=\"$vless_uuid\"" >> gv.sh
+echo "port_val=\"$vless_port\"" >> gv.sh
+cat >> gv.sh <<'GVSCRIPT2'
+echo "端口: $port_val"
+echo "UUID: $uuid_val"
+echo "pbk公钥: $pbk_val"
+echo "sid shortId: $sid_val"
 echo
 echo "✅完整节点链接（直接复制）："
-echo "vless://\$uuid_val@\$lan_ip:\$port_val?encryption=none&security=reality&type=tcp&pbk=\$pbk_val&sid=\$sid_val&sni=www.microsoft.com&fp=chrome#LAN-VLESS-Reality"
-GVSCRIPT
+echo "vless://$uuid_val@$lan_ip:$port_val?encryption=none&security=reality&type=tcp&pbk=$pbk_val&sid=$sid_val&sni=www.microsoft.com&fp=chrome#LAN-VLESS-Reality"
+GVSCRIPT2
 chmod +x gv.sh
 
 cd /data/data/com.termux/files/usr/etc/profile.d
