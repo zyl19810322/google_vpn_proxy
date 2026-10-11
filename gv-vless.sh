@@ -1,135 +1,120 @@
 #!/bin/bash
 xrinstall(){
-pkg install -y screen jq
+pkg install -y screen
 if [ ! -e xray ]; then
 echo "下载 Xray-core arm64 中……"
+# 从你的github仓库下载
 curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/xray-android-arm64-v8a.zip
 unzip xray-android-arm64-v8a.zip
-# 把解压目录内全部文件复制到当前目录
-cp -r xray-android-arm64-v8a/* ./
-# 删除解压出来的文件夹
-rm -rf xray-android-arm64-v8a
 chmod +x xray
 fi
 if [ ! -e xray ]; then
-echo "Xray下载失败，请检查网络" && exit
+echo "Github直连失败，切换ghproxy中转"
+curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://gh-proxy.com/https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/xray-android-arm64-v8a.zip
+unzip xray-android-arm64-v8a.zip
+chmod +x xray
+fi
+if [ ! -e xray ]; then
+echo "Xray下载失败，请在代理环境下运行脚本" && exit
 fi
 rm -f xray-android-arm64-v8a.zip README* LICENSE*
-echo "生成X25519公私钥对……"
-KEY_OUT=$(./xray x25519)
-privateKey=$(echo "$KEY_OUT" | sed -n 's/^PrivateKey: //p')
-publicKey=$(echo "$KEY_OUT" | sed -n 's/^PublicKey: //p')
-vless_uuid=$(./xray uuid)
-shortId=$(od -An -tx1 -N8 /dev/urandom | tr -d ' \n')
-read -p "设置 VLESS+Reality 端口(默认34345): " vless_port
+# 输入配置
+read -p "设置 VLESS 监听端口（回车随机10000-65535）：" vless_port
 if [ -z "$vless_port" ]; then
-vless_port=34345
+vless_port=$(shuf -i 10000-65535 -n 1)
 fi
-echo
-echo "==== 生成密钥参数 ===="
-echo "端口         : $vless_port"
-echo "UUID         : $vless_uuid"
-echo "服务端私钥   : $privateKey"
-echo "客户端pbk公钥: $publicKey"
-echo "shortId(sid) : $shortId"
-echo "SNI          : www.apple.com"
-echo
-# ========== config.json 更换为apple，无DNS ==========
+read -p "设置 VLESS UUID（回车自动生成UUID）：" vless_uuid
+if [ -z "$vless_uuid" ]; then
+# 生成随机UUID
+vless_uuid=$(cat /proc/sys/kernel/random/uuid)
+fi
+echo "VLESS端口：$vless_port"
+echo "VLESS UUID：$vless_uuid"
+sleep 2
+# 写入Xray config.json
 cat > config.json <<EOF
 {
   "inbounds": [
     {
-      "listen": "0.0.0.0",
       "port": $vless_port,
+      "listen": "0.0.0.0",
       "protocol": "vless",
       "settings": {
         "clients": [
           {
-            "id": "$vless_uuid",
-            "flow": "xtls-rprx-vision"
+            "id": "$vless_uuid"
           }
         ],
         "decryption": "none"
       },
       "streamSettings": {
-        "network": "tcp",
-        "security": "reality",
-        "realitySettings": {
-          "show": false,
-          "dest": "www.apple.com:443",
-          "xver": 0,
-          "serverNames": ["www.apple.com"],
-          "privateKey": "$privateKey",
-          "shortIds": ["$shortId"]
-        }
+        "network": "tcp"
       }
     }
   ],
   "outbounds": [
     {
-      "protocol": "freedom",
-      "tag": "direct"
+      "tag": "direct",
+      "protocol": "freedom"
     }
   ]
 }
 EOF
-# 生成gv.sh，sni替换为apple，带flow
-cat > gv.sh <<GVSCRIPT
-#!/data/data/com.termux/files/usr/bin/bash
-set -e
-pbk_val="$publicKey"
-sid_val="$shortId"
-uuid_val="$vless_uuid"
-port_val="$vless_port"
-echo "==== VLESS Reality 参数 ===="
-echo "端口: \$port_val"
-echo "UUID: \$uuid_val"
-echo "pbk公钥: \$pbk_val"
-echo "sid shortId: \$sid_val"
-echo
-echo "✅完整节点链接（把【IP】替换为Pixel内网IP）："
-echo "vless://\$uuid_val@【IP】:\$port_val?encryption=none&security=reality&type=tcp&pbk=\$pbk_val&sid=\$sid_val&sni=www.apple.com&fp=chrome&flow=xtls-rprx-vision#GoogleVPN-VLESS"
-GVSCRIPT
-chmod +x gv.sh
-# termux开机自启
-mkdir -p /data/data/com.termux/files/home/.config/termux/boot
-cat > /data/data/com.termux/files/home/.config/termux/boot/start-xray.sh <<BOOT
-#!/data/data/com.termux/files/usr/bin/bash
-cd \$HOME
-screen -S xrscreen -dm ./xray run -c config.json
-BOOT
-chmod +x /data/data/com.termux/files/home/.config/termux/boot/start-xray.sh
+# 自启脚本，放到profile.d
+cd /data/data/com.termux/files/usr/etc/profile.d
+echo '#!/data/data/com.termux/files/usr/bin/bash' > xr.sh
+echo 'screen -wipe' >> xr.sh
+echo "screen -ls | grep Detached | cut -d. -f1 | awk '{print \$1}' | xargs kill" >> xr.sh
+echo "screen -dmS xrscreen bash -c './xray run -c config.json'" >> xr.sh
+chmod +x xr.sh
 echo "===== 安装完成 ====="
-echo "1. 校验配置： ./xray test -c config.json"
-echo "2. 前台启动： ./xray run -c config.json"
-echo "3. 后台screen启动：screen -S xrscreen ./xray run -c config.json"
-echo "4. 查看节点链接： bash gv.sh"
-echo "⚠️仅内网局域网使用！"
+echo "内网节点链接模板："
+echo "vless://$vless_uuid@【本机局域网IP】:$vless_port?encryption=none&type=tcp#Termux-VLESS-LAN"
+echo "快捷查看信息：bash gv.sh"
 sleep 3
 exit
 }
 uninstall(){
-screen -ls | grep xrscreen | awk '{print $1}' | xargs -I{} screen -S {} -X quit
-# 新增删除geoip.dat geosite.dat
-rm -f xray config.json gv.sh geoip.dat geosite.dat
-rm -f /data/data/com.termux/files/home/.config/termux/boot/start-xray.sh
-echo "卸载完成，文件全部清理"
+screen -ls | grep Detached | cut -d. -f1 | awk '{print $1}' | xargs kill
+rm -f xray config.json gv.sh
+echo "卸载完毕"
 }
 show_menu(){
+# 生成gv.sh查看配置
+cat > gv.sh <<EOF
+#!/data/data/com.termux/files/usr/bin/bash
+echo "==== 当前VLESS配置 ===="
+port=\$(cat config.json | grep port | head -1 | awk '{print \$2}' | tr -d ',')
+uuid=\$(cat config.json | grep id | head -1 | awk '{print \$2}' | tr -d '"')
+echo "端口: \$port"
+echo "UUID: \$uuid"
+echo "节点链接：vless://\$uuid@你的手机内网IP:\$port?encryption=none&type=tcp#LAN-VLESS"
+EOF
+chmod +x gv.sh
 clear
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-echo "      内网 VLESS+Reality 一键部署脚本"
+echo "Termux Xray VLESS局域网共享代理一键脚本"
+echo "Xray包来自 zyl19810322/google_vpn_proxy"
+echo "仅内网TCP VLESS，本机流量走系统已有VPN"
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-echo " 1. 一键安装/重置配置"
-echo " 2. 卸载全部文件"
-echo " 0. 退出脚本"
+echo " 1. 重置安装"
+echo " 2. 删除卸载"
+echo " 0. 退出"
 echo "------------------------------------------------"
-read -p "请输入选项:" opt
-case $opt in
-1) xrinstall;;
-2) uninstall;;
-0) exit;;
-*) echo "输入错误";sleep 1;show_menu;;
+if [[ -e config.json ]]; then
+vless_port_now=$(cat config.json | grep port | head -1 | awk '{print $2}' | tr -d ',')
+vless_uuid_now=$(cat config.json | grep id | head -1 | awk '{print $2}' | tr -d '"')
+echo "当前VLESS端口：$vless_port_now"
+echo "当前VLESS UUID：$vless_uuid_now"
+else
+echo "未安装，请选择 1 进行安装"
+fi
+echo "------------------------------------------------"
+read -p "请输入数字:" Input
+case "$Input" in
+ 1 ) xrinstall;;
+ 2 ) uninstall;;
+ * ) exit
 esac
 }
 show_menu
