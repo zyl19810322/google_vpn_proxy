@@ -111,9 +111,9 @@ uuid="$vless_uuid"
 pbk="$publicKey"
 sid="$shortId"
 
-vless_link="vless://\$uuid@你的手机内网IP:\$port?encryption=none&security=reality&type=tcp&pbk=\$pbk&sid=\$sid&sni=www.apple.com&fp=chrome&flow=xtls-rprx-vision#LAN-VLESS-Reality"
-socks_link="socks5://你的手机内网IP:\$socksport"
-http_link="http://你的手机内网IP:\$httpport"
+vless_link="vless://\$uuid@内网IP:\$port?encryption=none&security=reality&type=tcp&pbk=\$pbk&sid=\$sid&sni=www.apple.com&fp=chrome&flow=xtls-rprx-vision#Google VPN"
+socks_link="socks5://内网IP:\$socksport"
+http_link="http://内网IP:\$httpport"
 
 reset_install(){
   echo "⚠️ 重置安装，会重新生成密钥，旧配置失效！"
