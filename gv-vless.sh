@@ -213,7 +213,7 @@ sleep 1
 show_menu(){
 clear
 echo "===== Xray三合一 主菜单 ====="
-echo "1 安装/重置代理(VLESS+SOCKS5+HTTP)"
+echo "1 安装"
 echo "0 退出"
 echo "-----------------------------"
 read -p "请选择：" Input
