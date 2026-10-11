@@ -83,7 +83,7 @@ cat > config.json <<EOF
 ]
 }
 EOF
-# ========= 重点！直接硬编码参数写入gv.sh，不再读取外部文件 =========
+# ========= 直接硬编码参数写入gv.sh，不再读取外部文件 =========
 cat > gv.sh <<GVSCRIPT
 #!/data/data/com.termux/files/usr/bin/bash
 echo "==== 当前VLESS-Reality配置 ===="
@@ -102,8 +102,8 @@ chmod +x gv.sh
 # 自启脚本，放到profile.d
 cd /data/data/com.termux/files/usr/etc/profile.d
 echo '#!/data/data/com.termux/files/usr/bin/bash' > xr.sh
-echo 'screen -wipe' >> xr.sh
-echo "screen -ls | grep Detached | cut -d. -f1 | awk '{print $1}' | xargs kill" >> xr.sh
+echo 'PID=$(screen -ls | grep Detached | cut -d. -f1 | awk "{print \$1}")' >> xr.sh
+echo '[ -n "$PID" ] && echo "$PID" | xargs kill' >> xr.sh
 echo "screen -dmS xrscreen bash -c './xray run -c config.json'" >> xr.sh
 chmod +x xr.sh
 echo "===== 安装完成 ====="
@@ -114,7 +114,8 @@ sleep 3
 exit
 }
 uninstall(){
-screen -ls | grep Detached | cut -d. -f1 | awk '{print $1}' | xargs kill
+PID=$(screen -ls | grep Detached | cut -d. -f1 | awk '{print $1}')
+[ -n "$PID" ] && echo "$PID" | xargs kill
 rm -f xray config.json gv.sh
 rm -f /data/data/com.termux/files/usr/etc/profile.d/xr.sh
 echo "卸载完毕"
