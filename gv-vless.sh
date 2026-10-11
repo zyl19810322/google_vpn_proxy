@@ -147,13 +147,13 @@ uninstall_all(){
 
 menu(){
 clear
-echo "===== Xray三合一代理管理菜单 ====="
-echo "VLESS-Reality 端口: \$port"
-echo "SOCKS5        端口: \$socksport"
-echo "HTTP          端口: \$httpport"
-echo "UUID: \$uuid"
-echo "PBK: \$pbk"
-echo "shortId: \$sid"
+echo "===== Xray代理管理菜单 ====="
+echo "SOCKS5 端口: \$socksport HTTP 端口: \$httpport"
+echo "VLESS-Reality 主要参数"
+echo " 端口: \$port"
+echo " UUID: \$uuid"
+echo " PBK: \$pbk"
+echo " shortId: \$sid"
 echo "----------------------------------"
 echo "1 重置安装（重新生成密钥与配置）"
 echo "2 卸载全部"
@@ -194,8 +194,7 @@ echo '[ -n "$PID" ] && echo "$PID" | xargs kill' >> xr.sh
 echo "screen -dmS xrscreen bash -c './xray run -c config.json'" >> xr.sh
 chmod +x xr.sh
 
-echo "===== ✅ 三合一安装完成 ====="
-echo "VLESS:59322 | SOCKS5:1080 | HTTP:8080"
+echo " ✅ 安装完成"
 echo "日常管理命令：bash gv.sh"
 sleep 3
 exit
@@ -214,7 +213,7 @@ sleep 1
 show_menu(){
 clear
 echo "===== Xray三合一 主菜单 ====="
-echo "1 安装/重置三合一代理(VLESS+SOCKS5+HTTP)"
+echo "1 安装/重置代理(VLESS+SOCKS5+HTTP)"
 echo "2 卸载全部"
 echo "0 退出"
 echo "-----------------------------"
