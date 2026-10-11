@@ -89,7 +89,7 @@ cat > config.json <<EOF
 }
 EOF
 
-# gv.sh 使用jq解析JSON，彻底解决多行json错乱问题
+# 【JQ版gv.sh，不会乱行】
 cat > gv.sh <<'GVSCRIPT'
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
@@ -104,17 +104,18 @@ shortid=$(jq -r '.inbounds[0].streamSettings.realitySettings.shortIds[0]' config
 pbk=$(./xray x25519 -private "$privkey" 2>/dev/null | sed -n 's/^Password (PublicKey): //p')
 sni="www.microsoft.com"
 fp="chrome"
+# 获取本机wlan内网IP
+lan_ip=$(ip addr | grep -E 'inet.*wlan' | awk '{print $2}' | cut -d/ -f1 | head -n1)
 echo "==== 当前VLESS+Reality配置 ===="
+echo "内网IP: $lan_ip"
 echo "端口: $port"
 echo "UUID: $uuid"
 echo "服务端私钥: $privkey"
 echo "pbk公钥: $pbk"
 echo "sid shortId: $shortid"
 echo
-echo "节点链接："
-echo "vless://$uuid@你的手机内网IP:$port?encryption=none&security=reality&type=tcp&pbk=$pbk&sid=$shortid&sni=$sni&fp=$fp#LAN‑VLESS‑Reality"
-echo
-echo "⚠️ 提示：把【你的手机内网IP】替换成Termux手机局域网IP"
+echo "✅完整节点链接（直接复制）："
+echo "vless://$uuid@$lan_ip:$port?encryption=none&security=reality&type=tcp&pbk=$pbk&sid=$shortid&sni=$sni&fp=$fp#LAN-VLESS-Reality"
 GVSCRIPT
 chmod +x gv.sh
 
