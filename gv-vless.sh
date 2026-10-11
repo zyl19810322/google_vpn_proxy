@@ -2,25 +2,15 @@
 xrinstall(){
 pkg install -y screen
 if [ ! -e xray ]; then
-echo "下载 Xray-core arm64 中……"
-curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/xray-android-arm64-v8a.zip
-unzip xray-android-arm64-v8a.zip
-cp -r xray-android-arm64-v8a/* ./
-rm -rf xray-android-arm64-v8a
+echo "下载 xray 中……"
+curl -L -o xray.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/xray.zip
+unzip xray.zip
 chmod +x xray
 fi
 if [ ! -e xray ]; then
-echo "Github直连失败，切换ghproxy中转"
-curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://gh-proxy.com/https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/xray-android-arm64-v8a.zip
-unzip xray-android-arm64-v8a.zip
-cp -r xray-android-arm64-v8a/* ./
-rm -rf xray-android-arm64-v8a
-chmod +x xray
+echo "xray下载失败，请在代理环境下运行脚本" && exit
 fi
-if [ ! -e xray ]; then
-echo "Xray下载失败，请在代理环境下运行脚本" && exit
-fi
-rm -f xray-android-arm64-v8a.zip README* LICENSE*
+rm -f xray.zip README* LICENSE*
 
 # 生成密钥
 KEY_OUT=$(./xray x25519)
