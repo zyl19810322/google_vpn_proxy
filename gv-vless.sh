@@ -1,7 +1,6 @@
 #!/bin/bash
 xrinstall(){
 pkg install -y screen
-pkg install -y termux-api
 if [ ! -e xray ]; then
 echo "下载 Xray-core arm64 中……"
 curl -L -o xray-android-arm64-v8a.zip -# --retry 2 --insecure https://raw.githubusercontent.com/zyl19810322/google_vpn_proxy/main/xray-android-arm64-v8a.zip
@@ -85,7 +84,7 @@ cat > config.json <<EOF
 }
 EOF
 
-# ========= 生成gv.sh，菜单包含：重置安装 / 卸载全部 / 查看链接 / 复制链接 =========
+# ========= 生成gv.sh，菜单移除复制剪贴板选项 =========
 cat > gv.sh <<GVSCRIPT
 #!/data/data/com.termux/files/usr/bin/bash
 # 硬编码保存参数，安装一次性写入
@@ -106,7 +105,7 @@ reset_install(){
     return
   fi
   # 调用主脚本重新执行安装
-  bash "$0"
+  bash "\$0"
 }
 
 # 卸载全部函数
@@ -139,7 +138,6 @@ echo "---------------------------"
 echo "1 重置安装（重新生成密钥与配置）"
 echo "2 卸载全部"
 echo "3 查看完整节点链接"
-echo "4 复制链接到剪贴板"
 echo "0 退出"
 echo "---------------------------"
 read -p "请选择：" opt
@@ -150,12 +148,6 @@ case \$opt in
 echo ""
 echo "\$link"
 echo ""
-read -p "回车返回菜单"
-menu
-;;
-4)
-echo "\$link" | termux-clipboard-set
-echo "✅ 链接已复制到剪贴板"
 read -p "回车返回菜单"
 menu
 ;;
